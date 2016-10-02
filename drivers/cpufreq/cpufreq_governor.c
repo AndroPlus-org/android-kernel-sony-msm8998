@@ -56,15 +56,6 @@ void dbs_check_cpu(struct dbs_data *dbs_data, int cpu)
 		sampling_rate *= od_dbs_info->rate_mult;
 
 		ignore_nice = od_tuners->ignore_nice_load;
-	} else if (dbs_data->cdata->governor == GOV_ALUCARD) {
-		sampling_rate = ac_tuners->sampling_rate;
-		ignore_nice = ac_tuners->ignore_nice_load;
-	} else if (dbs_data->cdata->governor == GOV_DARKNESS) {
-		sampling_rate = dk_tuners->sampling_rate;
-		ignore_nice = dk_tuners->ignore_nice_load;
-	} else if (dbs_data->cdata->governor == GOV_NIGHTMARE) {
-		sampling_rate = nm_tuners->sampling_rate;
-		ignore_nice = nm_tuners->ignore_nice_load;
 	} else {
 		sampling_rate = cs_tuners->sampling_rate;
 		ignore_nice = cs_tuners->ignore_nice_load;
@@ -290,18 +281,6 @@ static void set_sampling_rate(struct dbs_data *dbs_data,
 		struct cs_dbs_tuners *cs_tuners = dbs_data->tuners;
 		cs_tuners->sampling_rate = max(cs_tuners->sampling_rate,
 			sampling_rate);
-	} else if (dbs_data->cdata->governor == GOV_ALUCARD) {
-		struct ac_dbs_tuners *ac_tuners = dbs_data->tuners;
-		ac_tuners->sampling_rate = max(ac_tuners->sampling_rate, 
-			sampling_rate);
-	} else if (dbs_data->cdata->governor == GOV_DARKNESS) {
-		struct dk_dbs_tuners *dk_tuners = dbs_data->tuners;
-		dk_tuners->sampling_rate = max(dk_tuners->sampling_rate, 
-			sampling_rate);
-	} else if (dbs_data->cdata->governor == GOV_NIGHTMARE) {
-		struct nm_dbs_tuners *nm_tuners = dbs_data->tuners;
-		nm_tuners->sampling_rate = max(nm_tuners->sampling_rate, 
-			sampling_rate);
 	} else {
 		struct od_dbs_tuners *od_tuners = dbs_data->tuners;
 		od_tuners->sampling_rate = max(od_tuners->sampling_rate, 
@@ -465,24 +444,6 @@ static int cpufreq_governor_start(struct cpufreq_policy *policy,
 
 		sampling_rate = cs_tuners->sampling_rate;
 		ignore_nice = cs_tuners->ignore_nice_load;
-	} else if (dbs_data->cdata->governor == GOV_ALUCARD) {
-		ac_tuners = dbs_data->tuners;
-		ac_dbs_info = dbs_data->cdata->get_cpu_dbs_info_s(cpu);
-		sampling_rate = ac_tuners->sampling_rate;
-		ignore_nice = ac_tuners->ignore_nice_load;
-		ac_ops = dbs_data->cdata->gov_ops;
-	} else if (dbs_data->cdata->governor == GOV_DARKNESS) {
-		dk_tuners = dbs_data->tuners;
-		dk_dbs_info = dbs_data->cdata->get_cpu_dbs_info_s(cpu);
-		sampling_rate = dk_tuners->sampling_rate;
-		ignore_nice = dk_tuners->ignore_nice_load;
-		dk_ops = dbs_data->cdata->gov_ops;
-	} else if (dbs_data->cdata->governor == GOV_NIGHTMARE) {
-		nm_tuners = dbs_data->tuners;
-		nm_dbs_info = dbs_data->cdata->get_cpu_dbs_info_s(cpu);
-		sampling_rate = nm_tuners->sampling_rate;
-		ignore_nice = nm_tuners->ignore_nice_load;
-		nm_ops = dbs_data->cdata->gov_ops;
 	} else {
 		struct od_dbs_tuners *od_tuners = dbs_data->tuners;
 
