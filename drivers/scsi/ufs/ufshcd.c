@@ -2506,8 +2506,10 @@ __ufshcd_send_uic_cmd(struct ufs_hba *hba, struct uic_command *uic_cmd,
 		return -EIO;
 	}
 
-	if (completion)
+	if (completion) {
 		init_completion(&uic_cmd->done);
+		uic_cmd->comp_inited = true;
+	}
 
 	ufshcd_dispatch_uic_cmd(hba, uic_cmd);
 
@@ -5476,7 +5478,9 @@ static irqreturn_t ufshcd_uic_cmd_compl(struct ufs_hba *hba, u32 intr_status)
 			ufshcd_get_uic_cmd_result(hba);
 		hba->active_uic_cmd->argument3 =
 			ufshcd_get_dme_attr_val(hba);
-		complete(&hba->active_uic_cmd->done);
+		if (hba->active_uic_cmd->comp_inited)
+			complete(&hba->active_uic_cmd->done);
+
 		retval = IRQ_HANDLED;
 	}
 
