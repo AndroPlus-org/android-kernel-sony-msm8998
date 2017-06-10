@@ -201,9 +201,6 @@ static bool mdss_mdp_kcal_is_panel_on(void)
 static void mdss_mdp_kcal_update_pcc(struct kcal_lut_data *lut_data)
 {
 	u32 copyback = 0;
-#ifdef CONFIG_FB_MSM_MDSS_SPECIFIC_PANEL
-	u32 copy_from_kernel = 1;
-#endif /* CONFIG_FB_MSM_MDSS_SPECIFIC_PANEL */
 	struct mdp_pcc_cfg_data pcc_config;
 
 	struct mdp_pcc_data_v1_7 *payload;
@@ -233,11 +230,7 @@ static void mdss_mdp_kcal_update_pcc(struct kcal_lut_data *lut_data)
 	pcc_config.cfg_payload = payload;
 
 	if (!mdss_mdp_kcal_store_fb0_ctl()) return;
-#ifdef CONFIG_FB_MSM_MDSS_SPECIFIC_PANEL
-	mdss_mdp_pcc_config(fb0_ctl->mfd, &pcc_config, &copyback, copy_from_kernel);
-#else
 	mdss_mdp_pcc_config(fb0_ctl->mfd, &pcc_config, &copyback);
-#endif /* CONFIG_FB_MSM_MDSS_SPECIFIC_PANEL */
 	kfree(payload);
 }
 
