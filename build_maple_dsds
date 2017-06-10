@@ -1,8 +1,8 @@
 ### GCC 4.9.x
-### I'm using UBERTC https://bitbucket.org/UBERTC/aarch64-linux-android-4.9-kernel
+### I'm using this: https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/
 
 export ARCH=arm64
-export PATH=~/aarch64-linux-android-4.9-kernel/bin/:$PATH
+export PATH=~/aarch64-linux-android-4.9-aosp/bin/:$PATH
 ### See prefix of file names in the toolchain's bin directory
 export CROSS_COMPILE=aarch64-linux-android-
 
