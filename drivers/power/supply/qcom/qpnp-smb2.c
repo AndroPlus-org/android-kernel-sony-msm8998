@@ -1877,12 +1877,13 @@ static int smb2_init_hw(struct smb2 *chip)
 		return rc;
 	}
 
-	rc = smblib_masked_write(chg, USBIN_AICL_OPTIONS_CFG_REG,
-				 USBIN_AICL_RERUN_EN_BIT,
-				 USBIN_AICL_RERUN_EN_BIT);
+	/* Enable JEITA Hard Limit under any settings */
+	rc = smblib_masked_write(chg, JEITA_EN_CFG_REG,
+				 JEITA_EN_HARDLIMIT_BIT,
+				 JEITA_EN_HARDLIMIT_BIT);
 	if (rc < 0) {
-		dev_err(chg->dev, "Couldn't set AICL rerun enabled rc=%d\n",
-									rc);
+		dev_err(chg->dev, "Couldn't enable JEITA Hard Limit rc=%d\n",
+								rc);
 		return rc;
 	}
 

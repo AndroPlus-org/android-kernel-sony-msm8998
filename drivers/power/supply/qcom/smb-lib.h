@@ -418,6 +418,9 @@ struct smb_charger {
 	int			jeita_aux_thresh_warm;
 	int			jeita_warm_fcc_ua;
 	int			jeita_cool_fcc_ua;
+	bool			jeita_vbus_rising;
+	bool			jeita_rb_warm_hi_vbatt_en;
+	bool			jeita_keep_fake_charging;
 
 	/* low batt shutdown */
 	int			low_batt_shutdown_enabled;

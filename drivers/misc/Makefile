@@ -77,3 +77,4 @@ obj-$(CONFIG_POWERKEY_FORCECRASH) += powerkey_forcecrash.o
 obj-$(CONFIG_SENSORS_TCS3490) += tcs3490.o
 obj-$(CONFIG_TOF_SENSOR) += tof_sensor.o
 obj-$(CONFIG_MMTUNER_MN8855x) += mm_tuner/
+obj-$(CONFIG_ONESEG_TUNER_SMTVJ19X) += oneseg_tuner_drv.o

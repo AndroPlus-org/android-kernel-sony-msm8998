@@ -827,6 +827,8 @@ static int wcd_cpe_enable(struct wcd_cpe_core *core,
 		bool enable)
 {
 	int ret = 0;
+	int timeout = 0;
+	int err_cnt = 0;
 
 	if (enable) {
 		/* Reset CPE first */
@@ -849,8 +851,19 @@ static int wcd_cpe_enable(struct wcd_cpe_core *core,
 		if (ret)
 			goto fail_boot;
 
-		/* Dload data section */
-		ret = wcd_cpe_load_fw(core, ELF_FLAG_RW);
+		for (err_cnt = 0; err_cnt < 10; err_cnt++) {
+			/* Dload data section */
+			ret = wcd_cpe_load_fw(core, ELF_FLAG_RW);
+			if (ret) {
+				pr_err("%s: wcd_cpe_load_fw error ret=%d. retry.\n", __func__, ret);
+				msleep(5);
+			} else {
+				if (err_cnt > 0) {
+					pr_err("%s: wcd_cpe_load_fw error count=%d.\n", __func__, err_cnt);
+				}
+				break;
+			}
+		}
 		if (ret) {
 			dev_err(core->dev,
 				"%s: Failed to dload data section, err = %d\n",
@@ -879,9 +892,17 @@ static int wcd_cpe_enable(struct wcd_cpe_core *core,
 		dev_dbg(core->dev,
 			"%s: waiting for CPE bootup\n",
 			__func__);
-
+#if 0
 		wait_for_completion(&core->online_compl);
-
+#else
+		timeout = wait_for_completion_timeout(&core->online_compl, msecs_to_jiffies(1000));
+		if (!timeout) {
+			dev_err(core->dev,
+				"%s: Timeout boot CPE.\n",
+				__func__);
+			goto fail_boot;
+		}
+#endif
 		dev_dbg(core->dev,
 			"%s: CPE bootup done\n",
 			__func__);

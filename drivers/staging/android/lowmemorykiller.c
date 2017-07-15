@@ -554,10 +554,10 @@ static unsigned long lowmem_scan(struct shrinker *s, struct shrink_control *sc)
 
 		lowmem_deathpending_timeout = jiffies + HZ;
 		rem += selected_tasksize;
-		rcu_read_unlock();
 		trace_lmk_sigkill(selected->pid, selected->comm,
 				 selected_oom_score_adj, selected_tasksize,
 				 sc->gfp_mask);
+		rcu_read_unlock();
 		trace_almk_shrink(selected_tasksize, ret,
 				  other_free, other_file,
 				  selected_oom_score_adj);

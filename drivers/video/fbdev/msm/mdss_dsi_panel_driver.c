@@ -1498,6 +1498,15 @@ int mdss_dsi_panel_driver_parse_dt(struct device_node *np,
 					spec_pdata->chg_fps.mask = tmp;
 				}
 			}
+
+			rc = of_property_read_u32_array(np,
+					"somc,change-fps-porch-range",
+					spec_pdata->chg_fps.porch_range,
+					FPS_PORCH_RNG_NUM);
+			if (rc) {
+				spec_pdata->chg_fps.porch_range[FPS_PORCH_RNG_MIN] = 0;
+				spec_pdata->chg_fps.porch_range[FPS_PORCH_RNG_MAX] = 0;
+			}
 			break;
 		case FPS_TYPE_FULL_INCELL:
 			(void)mdss_dsi_property_read_u32_var(np,
@@ -2197,6 +2206,9 @@ static int mdss_dsi_panel_driver_fps_calc_porch
 	u32 dfpks_rev;
 	u32 vdisp;
 	u32 cmds, payload;
+	u32 porch_range_max = 0;
+	u32 porch_range_min = 0;
+
 	int i, j;
 	u16 porch_calc = 0;
 	u16 send_byte;
@@ -2215,6 +2227,8 @@ static int mdss_dsi_panel_driver_fps_calc_porch
 	send_byte = spec_pdata->chg_fps.send_byte;
 	mask_pos = spec_pdata->chg_fps.mask_pos;
 	mask = spec_pdata->chg_fps.mask;
+	porch_range_max = spec_pdata->chg_fps.porch_range[FPS_PORCH_RNG_MAX];
+	porch_range_min = spec_pdata->chg_fps.porch_range[FPS_PORCH_RNG_MIN];
 
 	if (!dfpks || !vmclk || !rtn) {
 		pr_err("%s: Invalid param dfpks=%d vmclk=%llu rtn%d\n",
@@ -2225,6 +2239,15 @@ static int mdss_dsi_panel_driver_fps_calc_porch
 	porch_calc = (u16)((
 			(((PSEC * KSEC) - (KSEC * vtouch * (u64)dfpks)) /
 			((u64)dfpks * vmclk * (u64)rtn)) - (u64)vdisp) / 2);
+
+	if (porch_range_max > 0) {
+		if ((porch_calc < porch_range_min)
+		||  (porch_calc > porch_range_max)) {
+			pr_err("%s: Not supported. porch:%d\n",
+				__func__, porch_calc);
+			return -EINVAL;
+		}
+	}
 
 	if (!(vmclk * rtn * (vdisp + porch_calc) + vtouch)) {
 		pr_err("%s: Invalid param \

@@ -5728,7 +5728,7 @@ static void mdss_mdp_force_border_color(struct mdss_mdp_ctl *ctl)
 static bool mdss_mdp_handle_backlight_extn(struct mdss_mdp_ctl *ctl)
 {
 	if (ctl->intf_type == MDSS_INTF_DSI && !ctl->is_video_mode &&
-	    ctl->mfd->bl_extn_level > 0)
+	    ctl->mfd->bl_extn_level >= 0)
 		return true;
 	else
 		return false;

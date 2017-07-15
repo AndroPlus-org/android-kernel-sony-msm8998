@@ -428,6 +428,8 @@ static struct labibb_vreg_status_ctrl {
 	int target_chatter_cnt;
 	int target_chatter_check_interval;
 	bool vreg_check_working;
+	bool ocp_lab_detected;
+	bool ocp_ibb_detected;
 } labibb_vreg_check;
 
 static int qpnp_ibb_register_irq(struct device_node *child,
@@ -3428,6 +3430,8 @@ exit:
 	/* initialize */
 	labibb_vreg_check.current_chatter_cnt = 0;
 	labibb_vreg_check.vreg_check_working = false;
+	labibb_vreg_check.ocp_lab_detected = false;
+	labibb_vreg_check.ocp_ibb_detected = false;
 	return;
 }
 #endif /* CONFIG_SOMC_LCD_OCP_ENABLED */
@@ -4567,6 +4571,7 @@ static irqreturn_t lab_vreg_handler(int irq, void *_chip)
 	int rc;
 	struct qpnp_labibb *labibb = _chip;
 
+	labibb_vreg_check.ocp_lab_detected = true;
 	pr_err("%s: LAB VREG_NG interrupt!\n", __func__);
 	qpnp_labibb_interrupt_disable_ctl(labibb);
 
@@ -4586,10 +4591,12 @@ static irqreturn_t lab_vreg_handler(int irq, void *_chip)
 		goto exit;
 	}
 
-	if (!(val & LAB_STATUS1_VREG_OK))
+	if (!(val & LAB_STATUS1_VREG_OK)) {
 		pr_err("%s: LAB VREG NG!!!\n", __func__);
-	else
+	} else {
+		labibb_vreg_check.ocp_lab_detected = false;
 		goto false_detection;
+	}
 
 	/* start vreg check */
 	if (labibb_vreg_check.vreg_check_working)
@@ -4617,6 +4624,7 @@ static irqreturn_t ibb_vreg_handler(int irq, void *_chip)
 	int rc;
 	struct qpnp_labibb *labibb = _chip;
 
+	labibb_vreg_check.ocp_ibb_detected = true;
 	pr_err("%s: IBB VREG_NG interrupt!\n", __func__);
 	qpnp_labibb_interrupt_disable_ctl(labibb);
 
@@ -4636,10 +4644,12 @@ static irqreturn_t ibb_vreg_handler(int irq, void *_chip)
 		goto exit;
 	}
 
-	if (!(val & IBB_STATUS1_VREG_OK))
+	if (!(val & IBB_STATUS1_VREG_OK)) {
 		pr_err("%s: IBB VREG NG!!!\n", __func__);
-	else
+	} else {
+		labibb_vreg_check.ocp_ibb_detected = false;
 		goto false_detection;
+	}
 
 	/* start vreg check */
 	if (labibb_vreg_check.vreg_check_working)
@@ -4661,6 +4671,12 @@ false_detection:
 exit:
 	return IRQ_HANDLED;
 }
+
+bool qpnp_labibb_ocp_check(void)
+{
+	return (labibb_vreg_check.ocp_lab_detected || labibb_vreg_check.ocp_ibb_detected);
+}
+
 #endif /* CONFIG_SOMC_LCD_OCP_ENABLED */
 
 static int qpnp_labibb_regulator_probe(struct platform_device *pdev)

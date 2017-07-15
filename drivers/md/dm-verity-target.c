@@ -25,6 +25,10 @@
 #include <linux/module.h>
 #include <linux/reboot.h>
 
+#ifdef CONFIG_RAMDUMP_TAGS
+#include <linux/rdtags.h>
+#endif
+
 #define DM_MSG_PREFIX			"verity"
 
 #define DM_VERITY_ENV_LENGTH		42
@@ -198,6 +202,16 @@ static void verity_hash_at_level(struct dm_verity *v, sector_t block, int level,
 		*offset = idx << (v->hash_dev_block_bits - v->hash_per_block_bits);
 }
 
+static void add_verity_block_tag(unsigned long long blk)
+{
+	char verity_blk[64];
+	int count = 0;
+
+	count = snprintf(verity_blk, sizeof(verity_blk), "0x%llx", blk);
+
+	rdtags_add_tag("rdtag_verity_block_nr", verity_blk, count);
+}
+
 /*
  * Handle verification errors.
  */
@@ -232,9 +246,13 @@ static int verity_handle_err(struct dm_verity *v, enum verity_block_type type,
 		block);
 
 #ifdef CONFIG_PANIC_ON_DM_VERITY_ERRORS
-	if (dm_verity_panic_on_err)
+	if (dm_verity_panic_on_err) {
+#ifdef CONFIG_RAMDUMP_TAGS
+		add_verity_block_tag(block);
+#endif
 		panic("%s: %s block %llu is corrupted",
 			v->data_dev->name, type_str, block);
+	}
 #endif
 
 	if (v->corrupted_errs == DM_VERITY_MAX_CORRUPTED_ERRS)

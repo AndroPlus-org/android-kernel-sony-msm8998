@@ -9599,7 +9599,6 @@ static void clearpad_thread_resume_work(struct work_struct *work)
 				struct clearpad_t, thread_resume);
 	struct timespec ts;
 	bool locked = false;
-	int rc;
 
 	get_monotonic_boottime(&ts);
 	LOCK(&this->lock);
@@ -9629,31 +9628,7 @@ static void clearpad_thread_resume_work(struct work_struct *work)
 	if (clearpad_handle_if_first_event(this) < 0)
 		LOGE(this, "failed to handle first event\n");
 
-	/* Workaround for Kagura sharp panel id 9 */
-	if (this->chip_id == SYN_CHIP_332U) {
-		switch (this->device_info.customer_family) {
-		case 0xb1:
-		case 0xb2:
-			HWLOGW(this, "Trigger SW reset; "
-			       "workaround for Kagura sharp panel id 9\n");
-
-			clearpad_reset(this, SYN_SWRESET, __func__);
-
-			UNLOCK(&this->lock);
-
-			rc = clearpad_wait_for_interrupt(this,
-				&this->interrupt.for_reset, this->interrupt.wait_ms);
-
-			LOCK(&this->lock);
-			if (rc)
-				LOGE(this, "failed to get interrupt (rc=%d)\n", rc);
-			break;
-		default:
-			break;
-		}
-	}
-
-	touchctrl_unlock_power(this, "fb_unblank");
+		touchctrl_unlock_power(this, "fb_unblank");
 
 	get_monotonic_boottime(&ts);
 	HWLOGI(this, "end thread_resume @ %ld.%06ld\n",

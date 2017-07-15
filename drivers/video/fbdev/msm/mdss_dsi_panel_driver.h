@@ -149,6 +149,12 @@ struct incell_ctrl {
 #define KSEC ((u64)1000)
 #define CHANGE_PAYLOAD(a, b) (spec_pdata->fps_cmds.cmds[a].payload[b])
 
+typedef enum {
+	FPS_PORCH_RNG_MIN = 0,
+	FPS_PORCH_RNG_MAX,
+	FPS_PORCH_RNG_NUM,
+} fps_porch_rng_index;
+
 typedef enum FPS_TYPE {
 	FPSD,
 	VPSD
@@ -208,6 +214,7 @@ struct change_fps {
 	/* hybrid */
 	u32 dric_mclk;
 	u32 dric_vtouch;
+	u32 porch_range[FPS_PORCH_RNG_NUM];
 	u16 dric_rtn;
 	u16 send_byte;
 	u16 mask_pos;

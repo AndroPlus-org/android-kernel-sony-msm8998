@@ -2650,6 +2650,9 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 	int rc = 0;
 	bool hs_req = false;
 	bool cmd_mutex_acquired = false;
+#ifdef CONFIG_FB_MSM_MDSS_SPECIFIC_PANEL
+	bool cmdlist_mutex_acquired = false;
+#endif /* CONFIG_FB_MSM_MDSS_SPECIFIC_PANEL */
 
 	if (from_mdp) {	/* from mdp kickoff */
 		if (!ctrl->burst_mode_enabled) {
@@ -2665,6 +2668,11 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 	if (req && from_mdp && ctrl->burst_mode_enabled) {
 		mutex_lock(&ctrl->cmd_mutex);
 		cmd_mutex_acquired = true;
+#ifdef CONFIG_FB_MSM_MDSS_SPECIFIC_PANEL
+	} else if (!from_mdp) {
+		mutex_lock(&ctrl->cmdlist_mutex);
+		cmdlist_mutex_acquired = true;
+#endif /* CONFIG_FB_MSM_MDSS_SPECIFIC_PANEL */
 	}
 
 	MDSS_XLOG(ctrl->ndx, from_mdp, ctrl->mdp_busy, current->pid,
@@ -2689,6 +2697,10 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 		} else {
 			if (cmd_mutex_acquired)
 				mutex_unlock(&ctrl->cmd_mutex);
+#ifdef CONFIG_FB_MSM_MDSS_SPECIFIC_PANEL
+			if (cmdlist_mutex_acquired)
+				mutex_unlock(&ctrl->cmdlist_mutex);
+#endif /* CONFIG_FB_MSM_MDSS_SPECIFIC_PANEL */
 			return -EPERM;
 		}
 	}
@@ -2737,6 +2749,10 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 			pr_err("%s: Bus bw vote failed\n", __func__);
 			if (from_mdp)
 				mutex_unlock(&ctrl->cmd_mutex);
+#ifdef CONFIG_FB_MSM_MDSS_SPECIFIC_PANEL
+			if (cmdlist_mutex_acquired)
+				mutex_unlock(&ctrl->cmdlist_mutex);
+#endif /* CONFIG_FB_MSM_MDSS_SPECIFIC_PANEL */
 			return rc;
 		}
 
@@ -2745,6 +2761,10 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 			if (IS_ERR_VALUE(rc)) {
 				pr_err("IOMMU attach failed\n");
 				mutex_unlock(&ctrl->cmd_mutex);
+#ifdef CONFIG_FB_MSM_MDSS_SPECIFIC_PANEL
+				if (cmdlist_mutex_acquired)
+					mutex_unlock(&ctrl->cmdlist_mutex);
+#endif /* CONFIG_FB_MSM_MDSS_SPECIFIC_PANEL */
 				return rc;
 			}
 			use_iommu = true;
@@ -2808,6 +2828,11 @@ need_lock:
 				ctrl->panel_mode == DSI_CMD_MODE &&
 				(req && (req->flags & CMD_REQ_HS_MODE)))
 			mdss_dsi_cmd_stop_hs_clk_lane(ctrl);
+
+#ifdef CONFIG_FB_MSM_MDSS_SPECIFIC_PANEL
+		if (cmdlist_mutex_acquired)
+			mutex_unlock(&ctrl->cmdlist_mutex);
+#endif /* CONFIG_FB_MSM_MDSS_SPECIFIC_PANEL */
 	}
 
 	return ret;

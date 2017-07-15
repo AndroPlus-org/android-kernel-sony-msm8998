@@ -872,8 +872,8 @@ static const struct tasha_reg_mask_val tasha_spkr_default[] = {
 	{WCD9335_CDC_COMPANDER8_CTL3, 0x80, 0x80},
 	{WCD9335_CDC_COMPANDER7_CTL7, 0x01, 0x01},
 	{WCD9335_CDC_COMPANDER8_CTL7, 0x01, 0x01},
-	{WCD9335_CDC_BOOST0_BOOST_CTL, 0x7C, 0x50},
-	{WCD9335_CDC_BOOST1_BOOST_CTL, 0x7C, 0x50},
+	{WCD9335_CDC_BOOST0_BOOST_CTL, 0x7C, 0x58},
+	{WCD9335_CDC_BOOST1_BOOST_CTL, 0x7C, 0x58},
 };
 
 static const struct tasha_reg_mask_val tasha_spkr_mode1[] = {
@@ -5205,6 +5205,22 @@ static int tasha_codec_config_ear_spkr_gain(struct snd_soc_codec *codec,
 	return 0;
 }
 
+static void tasha_codec_set_offset_val(int *offset_val, int gain_offset,
+				       int mult)
+{
+	switch (gain_offset) {
+	case RX_GAIN_OFFSET_M0P5_DB:
+		*offset_val = 1 * mult;
+		break;
+	case RX_GAIN_OFFSET_M1P5_DB:
+		*offset_val = 2 * mult;
+		break;
+	default:
+		pr_err("Improper gain offset\n");
+		break;
+	}
+}
+
 static int tasha_codec_enable_mix_path(struct snd_soc_dapm_widget *w,
 		struct snd_kcontrol *kcontrol, int event)
 {
@@ -5252,7 +5268,7 @@ static int tasha_codec_enable_mix_path(struct snd_soc_dapm_widget *w,
 
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
-		if ((tasha->spkr_gain_offset == RX_GAIN_OFFSET_M1P5_DB) &&
+		if ((tasha->spkr_gain_offset != RX_GAIN_OFFSET_0_DB) &&
 		    (tasha->comp_enabled[COMPANDER_7] ||
 		     tasha->comp_enabled[COMPANDER_8]) &&
 		    (gain_reg == WCD9335_CDC_RX7_RX_VOL_MIX_CTL ||
@@ -5267,7 +5283,8 @@ static int tasha_codec_enable_mix_path(struct snd_soc_dapm_widget *w,
 			snd_soc_update_bits(codec,
 					    WCD9335_CDC_RX8_RX_PATH_MIX_SEC0,
 					    0x01, 0x01);
-			offset_val = -2;
+			tasha_codec_set_offset_val(&offset_val,
+						   tasha->spkr_gain_offset, -1);
 		}
 		val = snd_soc_read(codec, gain_reg);
 		val += offset_val;
@@ -5275,7 +5292,7 @@ static int tasha_codec_enable_mix_path(struct snd_soc_dapm_widget *w,
 		tasha_codec_config_ear_spkr_gain(codec, event, gain_reg);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
-		if ((tasha->spkr_gain_offset == RX_GAIN_OFFSET_M1P5_DB) &&
+		if ((tasha->spkr_gain_offset != RX_GAIN_OFFSET_0_DB) &&
 		    (tasha->comp_enabled[COMPANDER_7] ||
 		     tasha->comp_enabled[COMPANDER_8]) &&
 		    (gain_reg == WCD9335_CDC_RX7_RX_VOL_MIX_CTL ||
@@ -5290,7 +5307,8 @@ static int tasha_codec_enable_mix_path(struct snd_soc_dapm_widget *w,
 			snd_soc_update_bits(codec,
 					    WCD9335_CDC_RX8_RX_PATH_MIX_SEC0,
 					    0x01, 0x00);
-			offset_val = 2;
+			tasha_codec_set_offset_val(&offset_val,
+						   tasha->spkr_gain_offset, 1);
 			val = snd_soc_read(codec, gain_reg);
 			val += offset_val;
 			snd_soc_write(codec, gain_reg, val);
@@ -5483,7 +5501,7 @@ static int tasha_codec_enable_interpolator(struct snd_soc_dapm_widget *w,
 	case SND_SOC_DAPM_POST_PMU:
 		tasha_config_compander(codec, w->shift, event);
 		/* apply gain after int clk is enabled */
-		if ((tasha->spkr_gain_offset == RX_GAIN_OFFSET_M1P5_DB) &&
+		if ((tasha->spkr_gain_offset != RX_GAIN_OFFSET_0_DB) &&
 		    (tasha->comp_enabled[COMPANDER_7] ||
 		     tasha->comp_enabled[COMPANDER_8]) &&
 		    (gain_reg == WCD9335_CDC_RX7_RX_VOL_CTL ||
@@ -5498,7 +5516,8 @@ static int tasha_codec_enable_interpolator(struct snd_soc_dapm_widget *w,
 			snd_soc_update_bits(codec,
 					    WCD9335_CDC_RX8_RX_PATH_MIX_SEC0,
 					    0x01, 0x01);
-			offset_val = -2;
+			tasha_codec_set_offset_val(&offset_val,
+						   tasha->spkr_gain_offset, -1);
 		}
 		val = snd_soc_read(codec, gain_reg);
 		val += offset_val;
@@ -5508,7 +5527,7 @@ static int tasha_codec_enable_interpolator(struct snd_soc_dapm_widget *w,
 	case SND_SOC_DAPM_POST_PMD:
 		tasha_config_compander(codec, w->shift, event);
 		tasha_codec_enable_prim_interpolator(codec, reg, event);
-		if ((tasha->spkr_gain_offset == RX_GAIN_OFFSET_M1P5_DB) &&
+		if ((tasha->spkr_gain_offset != RX_GAIN_OFFSET_0_DB) &&
 		    (tasha->comp_enabled[COMPANDER_7] ||
 		     tasha->comp_enabled[COMPANDER_8]) &&
 		    (gain_reg == WCD9335_CDC_RX7_RX_VOL_CTL ||
@@ -5523,7 +5542,8 @@ static int tasha_codec_enable_interpolator(struct snd_soc_dapm_widget *w,
 			snd_soc_update_bits(codec,
 					    WCD9335_CDC_RX8_RX_PATH_MIX_SEC0,
 					    0x01, 0x00);
-			offset_val = 2;
+			tasha_codec_set_offset_val(&offset_val,
+						   tasha->spkr_gain_offset, 1);
 			val = snd_soc_read(codec, gain_reg);
 			val += offset_val;
 			snd_soc_write(codec, gain_reg, val);
@@ -12508,8 +12528,8 @@ static const struct tasha_reg_mask_val tasha_codec_reg_init_common_val[] = {
 	{WCD9335_CDC_CLSH_K2_MSB, 0x0F, 0x00},
 	{WCD9335_CDC_CLSH_K2_LSB, 0xFF, 0x60},
 	{WCD9335_CPE_SS_DMIC_CFG, 0x80, 0x00},
-	{WCD9335_CDC_BOOST0_BOOST_CTL, 0x70, 0x50},
-	{WCD9335_CDC_BOOST1_BOOST_CTL, 0x70, 0x50},
+	{WCD9335_CDC_BOOST0_BOOST_CTL, 0x7C, 0x58},
+	{WCD9335_CDC_BOOST1_BOOST_CTL, 0x7C, 0x58},
 	{WCD9335_CDC_RX7_RX_PATH_CFG1, 0x08, 0x08},
 	{WCD9335_CDC_RX8_RX_PATH_CFG1, 0x08, 0x08},
 	{WCD9335_ANA_LO_1_2, 0x3C, 0X3C},
@@ -13571,7 +13591,7 @@ static int tasha_codec_probe(struct snd_soc_codec *codec)
 	for (i = 0; i < COMPANDER_MAX; i++)
 		tasha->comp_enabled[i] = 0;
 
-	tasha->spkr_gain_offset = RX_GAIN_OFFSET_0_DB;
+	tasha->spkr_gain_offset = RX_GAIN_OFFSET_M0P5_DB;
 	tasha->intf_type = wcd9xxx_get_intf_type();
 	tasha_update_reg_reset_values(codec);
 	pr_debug("%s: MCLK Rate = %x\n", __func__, control->mclk_rate);

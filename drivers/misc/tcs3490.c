@@ -116,6 +116,7 @@
 #define RGBCIR_SENSOR_SYSFS_LINK_NAME "rgbcir_sensor"
 #define RGBCIR_SENSOR_PINCTRL_IRQ_ACTIVE "rgbcir_irq_active"
 #define RGBCIR_SENSOR_PINCTRL_IRQ_SUSPEND "rgbcir_irq_suspend"
+#define RGBCIR_SENSOR_REGULATOR_NOTIFY_PRIORITY (1000)
 
 enum tcs3490_regs {
     TCS3490_CONTROL,
@@ -246,19 +247,23 @@ struct tcs3490_chip {
     int irq_pending;
     bool unpowered;
     bool als_enabled;
+	bool is_register_regulator_cam_vio_notify;
 	int als_thres_enabled;
 	int als_switch_ch_enabled;
 	int vdd_supply_enable;
 	int gpio_vdd_enable;
+	int vio_supply_enable;
 
     bool als_gain_auto;
 	u8 als_channel;
     u8 device_index;
 	struct regulator *vdd;
 	struct regulator *gpio_vdd;
+	struct regulator *vio;
 	struct pinctrl *pinctrl;
 	struct pinctrl_state *gpio_state_active;
 	struct pinctrl_state *gpio_state_suspend;
+	struct notifier_block cam_io_regulator_cb;
 };
 
 static int tcs3490_power_on(struct tcs3490_chip *chip);
@@ -1253,6 +1258,32 @@ static const struct attribute_group tcs3490_attr_group = {
 	.attrs = tcs3490_attributes,
 };
 
+static int tcs3490_sensor_cam_io_notifier_call(struct notifier_block *self,
+	unsigned long event, void *data)
+{
+	struct tcs3490_chip *chip;
+	uint32_t rc;
+
+	if (event & REGULATOR_EVENT_DISABLE) {
+		chip = container_of(self, struct tcs3490_chip, cam_io_regulator_cb);
+		dev_info(&chip->client->dev,
+			"%s REGULATOR_EVENT_DISABLE occurred event \n", __func__);
+		if (chip->vdd_supply_enable)
+			rc = regulator_disable(chip->vdd);
+		else if (chip->gpio_vdd_enable)
+			rc = regulator_disable(chip->gpio_vdd);
+		if (!rc) {
+			chip->unpowered = true;
+			dev_info(&chip->client->dev,
+				"%s: Regulator vdd disable OK", __func__);
+		} else {
+			dev_err(&chip->client->dev,
+				"%s: Regulator vdd disable failed", __func__);
+		}
+	}
+	return NOTIFY_OK;
+}
+
 static int tcs3490_pltf_power_on(struct tcs3490_chip *chip)
 {
 	int rc = 0;
@@ -1260,7 +1291,7 @@ static int tcs3490_pltf_power_on(struct tcs3490_chip *chip)
 	mutex_lock(&chip->lock);
 	if (chip->vdd_supply_enable)
 		rc = regulator_enable(chip->vdd);
-	if (chip->gpio_vdd_enable)
+	else if (chip->gpio_vdd_enable)
 		rc = regulator_enable(chip->gpio_vdd);
 	if (rc) {
 		dev_err(&chip->client->dev,
@@ -1268,6 +1299,21 @@ static int tcs3490_pltf_power_on(struct tcs3490_chip *chip)
 		chip->unpowered = true;
 		mutex_unlock(&chip->lock);
 	} else {
+		if (chip->is_register_regulator_cam_vio_notify) {
+			regulator_unregister_notifier(chip->vio,
+				&(chip->cam_io_regulator_cb));
+			chip->is_register_regulator_cam_vio_notify = false;
+		}
+		if (chip->vio_supply_enable)
+			rc = regulator_enable(chip->vio);
+		if (rc) {
+			dev_err(&chip->client->dev,
+			"%s: Regulator vio enable failed rc=%d\n", __func__, rc);
+			chip->unpowered = true;
+			mutex_unlock(&chip->lock);
+		}
+	}
+	if (!rc) {
 		dev_dbg(&chip->client->dev,
 		"%s: rgbcir, power init, regulator enable OK\n", __func__);
 
@@ -1306,18 +1352,39 @@ static int tcs3490_power_on(struct tcs3490_chip *chip)
 static int tcs3490_pltf_power_off(struct tcs3490_chip *chip)
 {
 	int rc = 0;
+	int rc2 = 0;
 
 	mutex_lock(&chip->lock);
 	/* Disable Oscillator */
 	tcs3490_i2c_write(chip, TCS3490_CONTROL, 0x00);
 	usleep_range(3000, 4000);
-	if (chip->vdd_supply_enable)
-		rc = regulator_disable(chip->vdd);
-	if (chip->gpio_vdd_enable)
-		rc = regulator_disable(chip->gpio_vdd);
+	if (chip->vio_supply_enable && !chip->is_register_regulator_cam_vio_notify) {
+		chip->cam_io_regulator_cb.notifier_call = tcs3490_sensor_cam_io_notifier_call;
+		chip->cam_io_regulator_cb.priority = RGBCIR_SENSOR_REGULATOR_NOTIFY_PRIORITY;
+		if (regulator_register_notifier(chip->vio, &(chip->cam_io_regulator_cb)))
+			dev_err(&chip->client->dev,
+				"%s Regulator notification registration failed!\n", __func__);
+		else
+			chip->is_register_regulator_cam_vio_notify = true;
+	}
+	if (chip->vio_supply_enable) {
+		rc2 = regulator_disable(chip->vio);
+		if (rc2)
+			dev_err(&chip->client->dev,
+				"%s: Regulator vio disable failed", __func__);
+		else
+			dev_info(&chip->client->dev,
+				"%s: Regulator vio disable OK", __func__);
+	}
+	if (!chip->is_register_regulator_cam_vio_notify) {
+		if (chip->vdd_supply_enable)
+			rc = regulator_disable(chip->vdd);
+		else if (chip->gpio_vdd_enable)
+			rc = regulator_disable(chip->gpio_vdd);
 
-	if (!rc)
-		chip->unpowered = true;
+		if (!rc && !rc2)
+			chip->unpowered = true;
+	}
 	mutex_unlock(&chip->lock);
 	return rc;
 }
@@ -1337,8 +1404,7 @@ static int tcs3490_power_init(struct tcs3490_chip *chip)
 				"Regulator get failed, vdd, rc = %d\n", rc);
 			return rc;
 		}
-	}
-	if (chip->gpio_vdd_enable) {
+	} else if (chip->gpio_vdd_enable) {
 		chip->gpio_vdd = regulator_get(&chip->client->dev, "rgbcir-gpio-vdd");
 		if (IS_ERR(chip->gpio_vdd)) {
 			rc = PTR_ERR(chip->gpio_vdd);
@@ -1347,8 +1413,18 @@ static int tcs3490_power_init(struct tcs3490_chip *chip)
 			return rc;
 		}
 	}
+	if (chip->vio_supply_enable) {
+		chip->vio = regulator_get(&chip->client->dev, "rgbcir-vio");
+		if (IS_ERR(chip->vio)) {
+			rc = PTR_ERR(chip->vio);
+			dev_err(&chip->client->dev,
+				"%s: Regulator get failed,vio, rc = %d\n", __func__, rc);
+			return rc;
+		}
+	}
+	chip->is_register_regulator_cam_vio_notify = false;
 	dev_info(&chip->client->dev,
-		"%s: rgbcir, power init, regulator get OK\n", __func__);
+		"%s: rgbcir, power init, regulator get OK vdd=%d, gpio_vdd=%d, vio=%d\n", __func__, chip->vdd_supply_enable, chip->gpio_vdd_enable, chip->vio_supply_enable);
 	return rc;
 }
 
@@ -1358,10 +1434,16 @@ static int tcs3490_power_deinit(struct tcs3490_chip *chip)
 	if (!chip)
 		return -EINVAL;
 	chip->unpowered = true;
+	if (chip->vio_supply_enable && chip->vio) {
+		regulator_put(chip->vio);
+	}
+	if (chip->is_register_regulator_cam_vio_notify) {
+		regulator_unregister_notifier(chip->vio, &(chip->cam_io_regulator_cb));
+		chip->is_register_regulator_cam_vio_notify = false;
+	}
 	if (chip->vdd_supply_enable && chip->vdd) {
 		regulator_put(chip->vdd);
-	}
-	if (chip->gpio_vdd_enable && chip->gpio_vdd) {
+	} else if (chip->gpio_vdd_enable && chip->gpio_vdd) {
 		regulator_put(chip->gpio_vdd);
 	}
 	return rc;
@@ -1423,6 +1505,14 @@ static int tcs3490_probe(struct i2c_client *client,
 		goto pinctrl_init_failed;
 	}
 	chip->gpio_vdd_enable = val_u32;
+
+	rc = of_property_read_u32(client->dev.of_node,
+		"ams,rgbcir-vio-supply", &val_u32);
+	if (rc < 0) {
+		dev_err(&client->dev, "%s failed %d\n", __func__, __LINE__);
+		goto pinctrl_init_failed;
+	}
+	chip->vio_supply_enable = val_u32;
 
 	rc = tcs3490_power_init(chip);
 	if (rc)

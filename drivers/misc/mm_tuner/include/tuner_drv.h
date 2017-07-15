@@ -103,6 +103,7 @@ struct _tsif_cntxt {
 
 	/* TS packet buffer */
 	uint8_t *pktbuf;		/* pointer to TS packet buffer */
+	uint8_t *spibuf;		/* pointer to SPI transfer*/
 	uint32_t pwr;			/* write position of TS packet buffer */
 	uint32_t prd;			/* read position of TS packet buffer */
 	uint32_t ovf;			/* packet buffer overflow counter */
@@ -159,7 +160,7 @@ struct _tsif_cntxt {
 *  packet buffer size =  tc->ts_rx_size) * maxbank;
 */
 #define TUNER_MAX_TSPKTBUF_SIZE 2097152
-#define TUNER_MAX_TSPKTBUF_BANK 48
+#define TUNER_MAX_TSPKTBUF_BANK 12
 
 extern irqreturn_t tuner_interrupt(int irq, void *dev_id);
 

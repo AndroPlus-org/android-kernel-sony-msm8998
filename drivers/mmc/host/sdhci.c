@@ -12,6 +12,11 @@
  *
  *     - JMicron (hardware and technical support)
  */
+/*
+ * NOTE: This file has been modified by Sony Mobile Communications Inc.
+ * Modifications are Copyright (c) 2017 Sony Mobile Communications Inc,
+ * and licensed under the license of the file.
+ */
 
 #include <linux/delay.h>
 #include <linux/highmem.h>
@@ -2418,7 +2423,9 @@ static int sdhci_execute_tuning(struct mmc_host *mmc, u32 opcode)
 
 	if (host->ops->platform_execute_tuning) {
 		spin_unlock_irqrestore(&host->lock, flags);
+		mmc->doing_host_tuning = 0x01;
 		err = host->ops->platform_execute_tuning(host, opcode);
+		mmc->doing_host_tuning = 0x00;
 		sdhci_runtime_pm_put(host);
 		return err;
 	}

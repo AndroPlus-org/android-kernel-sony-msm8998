@@ -2536,7 +2536,8 @@ int adm_open(int port_id, int path, int rate, int channel_mode, int topology,
 		bit_width = 24;
 		pr_debug("%s: Force open adm in 24-bit for SOMC HP topology 0x%x\n",
 			__func__, topology);
-	} else if ((topology == ADM_CMD_COPP_OPENOPOLOGY_ID_SPEAKER_RX_MCH_IIR_COPP_MBDRC_V3) &&
+	} else if (((topology == ADM_CMD_COPP_OPENOPOLOGY_ID_SPEAKER_RX_MCH_IIR_COPP_MBDRC_V3) ||
+		(topology == ADM_CMD_COPP_OPENOPOLOGY_ID_SPEAKER_RX_MCH_FIR_IIR_COPP_MBDRC_V3)) &&
 		(app_type == APPTYPE_GENERAL_PLAYBACK)) {
 		bit_width = 24;
 		pr_debug("%s: Force open adm in 24-bit for SOMC Speaker topology 0x%x\n",

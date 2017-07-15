@@ -925,6 +925,11 @@ int tuner_drv_hw_tsif_get_pkts(struct _tsif_cntxt *tc)
 		pr_err("not support the Time-Stamp TS");
 		return -EINVAL;
 	}
+	if (!tc->spibuf) {
+		pr_err("SPI buf not found.\n");
+		return -EINVAL;
+	}
+	memset(tc->spibuf, 0, tc->ts_rx_size);
 
 	memset(xfer, 0, sizeof(xfer));
 	spi_message_init(&msg);
@@ -947,7 +952,7 @@ int tuner_drv_hw_tsif_get_pkts(struct _tsif_cntxt *tc)
 
 	spi_message_add_tail(&xfer[0], &msg);
 
-	xfer[1].rx_buf = (void *) (tc->pktbuf + tc->pwr);
+	xfer[1].rx_buf = (void *) (tc->spibuf);
 	xfer[1].bits_per_word = tsif->spi_ts_bit_per_word;
 #ifdef TUNER_CONFIG_SPI_DIVMSG
 	xfer[1].len = BUFLEN_ALIGN(tc->ts_rx_size);
@@ -997,6 +1002,8 @@ int tuner_drv_hw_tsif_get_pkts(struct _tsif_cntxt *tc)
 
 	/* ---------------------------------------------------- */
 
+	memcpy((void *) (tc->pktbuf + tc->pwr),
+	(void *) (tc->spibuf), tc->ts_rx_size);
 	tc->pwr += tc->ts_rx_size;
 
 	if (tc->pwr == tc->ts_pktbuf_size)

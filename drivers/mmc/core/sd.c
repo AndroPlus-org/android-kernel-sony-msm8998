@@ -1124,9 +1124,9 @@ static void mmc_sd_remove(struct mmc_host *host)
 	BUG_ON(!host->card);
 
 	mmc_exit_clk_scaling(host);
-	mmc_claim_host(host);
 	mmc_remove_card(host->card);
 
+	mmc_claim_host(host);
 	host->card = NULL;
 	mmc_release_host(host);
 }

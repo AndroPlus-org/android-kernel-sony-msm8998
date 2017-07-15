@@ -208,7 +208,6 @@ static struct platform_driver mmtuner_driver = {
 		.driver = {
 			.name = D_TUNER_CONFIG_PLATFORM_DRIVER_NAME,
 			.owner = THIS_MODULE,
-			.pm = &mmtuner_driver_pm_ops,
 			.of_match_table = of_match_ptr(mn88553_match_table),
 		}
 };
@@ -505,6 +504,7 @@ static int tuner_probe(struct platform_device *pdev)
 		__func__);
 
 	g_tscnt.pktbuf = NULL;
+	g_tscnt.spibuf = NULL;
 	g_tscnt.pwr = g_tscnt.prd = 0;
 	g_tscnt.ovf = 0;
 
@@ -1715,8 +1715,10 @@ static int tuner_drv_tsif_start(void)
 			g_tscnt.ts_rxpkt_num, g_tscnt.ts_rx_size,
 			g_tscnt.ts_pktbuf_size);
 
-	kfree(g_tscnt.pktbuf);
+	vfree(g_tscnt.pktbuf);
+	kfree(g_tscnt.spibuf);
 	g_tscnt.pktbuf = NULL;
+	g_tscnt.spibuf = NULL;
 
 #ifdef TUNER_CONFIG_SPI_ALIGN
 	buffer_size = g_tscnt.ts_pktbuf_size + TUNER_CONFIG_SPI_ALIGN - 1;
@@ -1727,7 +1729,7 @@ static int tuner_drv_tsif_start(void)
 #if defined(DPATH_GPIF) && defined(TUNER_CONFIG_GPIF_DMA)
 	g_tscnt.pktbuf = kmalloc(buffer_size, GFP_KERNEL | GFP_DMA);
 #else
-	g_tscnt.pktbuf = kmalloc(buffer_size, GFP_KERNEL);
+	g_tscnt.pktbuf = vmalloc_user(buffer_size);
 #endif
 
 	if (g_tscnt.pktbuf == NULL) {
@@ -1735,14 +1737,22 @@ static int tuner_drv_tsif_start(void)
 		return -ENOMEM;
 	}
 
+	g_tscnt.spibuf = kmalloc(g_tscnt.ts_rx_size, GFP_KERNEL);
+	if (g_tscnt.spibuf == NULL) {
+		vfree(g_tscnt.pktbuf);
+		pr_err("memory allocation failed.(spibuf)\n");
+		return -ENOMEM;
+	}
 	memset(g_tscnt.pktbuf, 0, g_tscnt.ts_pktbuf_size);
+	memset(g_tscnt.spibuf, 0, g_tscnt.ts_rx_size);
 	g_tscnt.pwr = g_tscnt.prd = 0;
 	g_tscnt.ovf = 0;
 
 	ret = tuner_drv_hw_tsif_config(&g_tscnt);
 	if (ret) {
 		pr_err("tuner_drv_hw_tsif_config() failed.\n");
-		kfree(g_tscnt.pktbuf);
+		vfree(g_tscnt.pktbuf);
+		kfree(g_tscnt.spibuf);
 		return ret;
 	}
 
@@ -1754,7 +1764,8 @@ static int tuner_drv_tsif_start(void)
 	ret = tuner_drv_hw_tsif_sync_pkt();
 	if (ret) {
 		pr_err("tuner_drv_hw_tsif_sync_pkt failed.\n");
-		kfree(g_tscnt.pktbuf);
+		vfree(g_tscnt.pktbuf);
+		kfree(g_tscnt.spibuf);
 		return ret;
 	}
 
@@ -1829,10 +1840,12 @@ static int tuner_drv_tsif_stop(void)
 	g_tscnt.ts_rx_size = 0;
 	g_tscnt.ts_pktbuf_size = 0;
 
-	kfree(g_tscnt.pktbuf);
+	vfree(g_tscnt.pktbuf);
+	kfree(g_tscnt.spibuf);
 	kfree(g_tscnt.tsif);
 
 	g_tscnt.pktbuf = NULL;
+	g_tscnt.spibuf = NULL;
 	g_tscnt.tsif = NULL;
 
 	return ret;

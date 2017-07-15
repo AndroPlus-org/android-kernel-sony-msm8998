@@ -589,6 +589,16 @@ int smblib_set_usb_suspend(struct smb_charger *chg, bool suspend)
 {
 	int rc = 0;
 
+#if defined(CONFIG_SOMC_CHARGER_EXTENSION)
+	/* WA for outbreak of icl charge irq during suspneded */
+	rc = smblib_masked_write(chg, USBIN_AICL_OPTIONS_CFG_REG,
+				 USBIN_AICL_RERUN_EN_BIT,
+				 suspend ? 0 : USBIN_AICL_RERUN_EN_BIT);
+	if (rc < 0) {
+		smblib_err(chg, "Couldn't set AICL rerun en bit rc=%d\n", rc);
+		return rc;
+	}
+#endif
 	rc = smblib_masked_write(chg, USBIN_CMD_IL_REG, USBIN_SUSPEND_BIT,
 				 suspend ? USBIN_SUSPEND_BIT : 0);
 	if (rc < 0)
@@ -1863,6 +1873,21 @@ int smblib_get_prop_batt_status(struct smb_charger *chg,
 	}
 	if (smart_votabled && !other_votabled) {
 		smblib_dbg(chg, PR_MISC, "Fake charging due to smart charge\n");
+		val->intval = POWER_SUPPLY_STATUS_CHARGING;
+		return 0;
+	}
+
+	if (chg->jeita_rb_warm_hi_vbatt_en &&
+		!get_effective_result(chg->chg_disable_votable)) {
+		smblib_dbg(chg, PR_MISC,
+				"Fake charging due to Reverse Boost WA\n");
+		val->intval = POWER_SUPPLY_STATUS_CHARGING;
+		return 0;
+	}
+
+	if (chg->jeita_keep_fake_charging) {
+		smblib_dbg(chg, PR_MISC,
+				"Fake charging during WA for Warm/FULL\n");
 		val->intval = POWER_SUPPLY_STATUS_CHARGING;
 		return 0;
 	}
@@ -4887,10 +4912,13 @@ static void smblib_icl_change_work(struct work_struct *work)
 }
 
 #if defined(CONFIG_SOMC_CHARGER_EXTENSION)
-#define FV_JEITA_WARM_UV 4200000
-#define JEITA_WORK_DELAY_RETRY_MS 500
-#define JEITA_WORK_DELAY_CHARGING_MS 5000
-#define JEITA_WORK_DELAY_DISCHARGING_MS 30000
+#define FV_JEITA_WARM_UV		4200000
+#define FV_JEITA_WARM_RB_WA_ENTER_UV	4200000
+#define FV_JEITA_WARM_RB_WA_EXIT_UV	4000000
+#define JEITA_WORK_DELAY_RETRY_MS	500
+#define JEITA_WORK_DELAY_CHARGING_MS	5000
+#define JEITA_WORK_DELAY_DISCHARGING_MS	30000
+#define JEITA_FAKE_CARGING_TIME_MS	500
 static void smblib_somc_jeita_work(struct work_struct *work)
 {
 	struct smb_charger *chg = container_of(work, struct smb_charger,
@@ -4899,10 +4927,12 @@ static void smblib_somc_jeita_work(struct work_struct *work)
 	int rc;
 	int batt_temp, skin_temp;
 	u8 reg;
+	u8 chg_stat;
 	bool vbus_rising;
 	bool skin_temp_failed = false;
 	int interval_ms;
 	int synth_cond;
+	int vbatt;
 
 	if (!chg->jeita_sw_ctl_en)
 		return;
@@ -4919,6 +4949,13 @@ static void smblib_somc_jeita_work(struct work_struct *work)
 		smblib_err(chg, "Couldn't get batt temp rc=%d\n", rc);
 
 	batt_temp = pval.intval;
+
+	rc = smblib_get_prop_batt_voltage_now(chg, &pval);
+	if (rc < 0) {
+		dev_err(chg->dev, "Couldn't read VBATT rc=%d\n", rc);
+		return;
+	}
+	vbatt = pval.intval;
 
 	if (chg->jeita_use_aux) {
 		rc = smblib_get_prop_skin_temp(chg, &pval);
@@ -4943,6 +4980,12 @@ static void smblib_somc_jeita_work(struct work_struct *work)
 			chg->jeita_skin_temp_condition = TEMP_CONDITION_WARM;
 		else
 			chg->jeita_skin_temp_condition = TEMP_CONDITION_NORMAL;
+	}
+
+	rc = smblib_read(chg, BATTERY_CHARGER_STATUS_1_REG, &chg_stat);
+	if (rc < 0) {
+		smblib_err(chg, "Couldn't read charger status 1 rc=%d\n", rc);
+		return;
 	}
 
 	rc = smblib_read(chg, BATTERY_CHARGER_STATUS_2_REG, &reg);
@@ -4989,7 +5032,6 @@ static void smblib_somc_jeita_work(struct work_struct *work)
 		synth_cond = TEMP_CONDITION_NORMAL;
 		break;
 	}
-	chg->jeita_synth_temp_condition = synth_cond;
 	smblib_dbg(chg, PR_MISC, "batt=%d skin=%d result=%d\n",
 						chg->jeita_batt_temp_condition,
 						chg->jeita_skin_temp_condition,
@@ -5024,6 +5066,47 @@ static void smblib_somc_jeita_work(struct work_struct *work)
 				skin_temp, chg->jeita_skin_temp_condition,
 								synth_cond);
 	}
+
+	/* WA for Reverse Boost */
+	if (!chg->jeita_rb_warm_hi_vbatt_en &&
+		vbus_rising && synth_cond == TEMP_CONDITION_WARM &&
+		vbatt > FV_JEITA_WARM_RB_WA_ENTER_UV) {
+		smblib_dbg(chg, PR_SOMC,
+				"WA for RB after Warm. vbatt=%d\n",
+				vbatt);
+		chg->jeita_rb_warm_hi_vbatt_en = true;
+		vote(chg->usb_icl_votable, JEITA_VOTER, true, 0);
+	} else if (chg->jeita_rb_warm_hi_vbatt_en &&
+			(!vbus_rising || synth_cond != TEMP_CONDITION_WARM ||
+			vbatt < FV_JEITA_WARM_RB_WA_EXIT_UV)) {
+		smblib_dbg(chg, PR_SOMC,
+				"Release WA for RB after Warm. vbatt=%d\n",
+				vbatt);
+		vote(chg->usb_icl_votable, JEITA_VOTER, false, 0);
+		chg->jeita_rb_warm_hi_vbatt_en = false;
+	}
+
+	/* WA for holding Charge Termination after normal */
+	if (vbus_rising &&
+	    chg->jeita_synth_temp_condition == TEMP_CONDITION_WARM &&
+	    (synth_cond == TEMP_CONDITION_NORMAL ||
+	    synth_cond == TEMP_CONDITION_COOL) &&
+	    !get_effective_result(chg->chg_disable_votable) &&
+	    ((chg_stat & BATTERY_CHARGER_STATUS_MASK) == TERMINATE_CHARGE ||
+	    (chg_stat & BATTERY_CHARGER_STATUS_MASK) == INHIBIT_CHARGE ||
+	    (chg_stat & CC_SOFT_TERMINATE_BIT) == CC_SOFT_TERMINATE_BIT)) {
+		smblib_dbg(chg, PR_SOMC, "Execute WA for holding FULL\n");
+		chg->jeita_keep_fake_charging = true;
+		vote(chg->chg_disable_votable, JEITA_VOTER, true, 0);
+		vote(chg->chg_disable_votable, JEITA_VOTER, false, 0);
+		msleep(JEITA_FAKE_CARGING_TIME_MS);
+
+		smblib_read(chg, BATTERY_CHARGER_STATUS_1_REG, &reg);
+		smblib_dbg(chg, PR_SOMC, "waiting done chg_sts1=0x%02x\n", reg);
+		chg->jeita_keep_fake_charging = false;
+	}
+
+	chg->jeita_synth_temp_condition = synth_cond;
 
 	if (vbus_rising && skin_temp_failed)
 		interval_ms = JEITA_WORK_DELAY_RETRY_MS;

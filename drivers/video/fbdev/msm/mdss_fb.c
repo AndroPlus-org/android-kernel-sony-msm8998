@@ -62,6 +62,7 @@
 #include "mdss_mdp.h"
 
 #ifdef CONFIG_FB_MSM_MDSS_SPECIFIC_PANEL
+#include <linux/regulator/qpnp-labibb-regulator.h>
 #include "mdss_dsi_panel_driver.h"
 #include "mdss_dsi_panel_debugfs.h"
 #endif /* CONFIG_FB_MSM_MDSS_SPECIFIC_PANEL */
@@ -1400,6 +1401,7 @@ static int mdss_fb_probe(struct platform_device *pdev)
 	mfd->fb_imgType = MDP_RGBA_8888;
 	mfd->calib_mode_bl = 0;
 	mfd->unset_bl_level = U32_MAX;
+	mfd->bl_extn_level = -1;
 
 	mfd->pdev = pdev;
 
@@ -5480,11 +5482,21 @@ void mdss_fb_report_panel_dead(struct msm_fb_data_type *mfd)
 	char *envp[2] = {"PANEL_ALIVE=0", NULL};
 	struct mdss_panel_data *pdata =
 		dev_get_platdata(&mfd->pdev->dev);
+#ifdef CONFIG_FB_MSM_MDSS_SPECIFIC_PANEL
+	int rc = 0;
+#endif /* CONFIG_FB_MSM_MDSS_SPECIFIC_PANEL */
 	if (!pdata) {
 		pr_err("Panel data not available\n");
 		return;
 	}
 
+#ifdef CONFIG_FB_MSM_MDSS_SPECIFIC_PANEL
+	rc = qpnp_labibb_ocp_check();
+	if (rc) {
+		pr_notice("%s: ocp check error\n", __func__);
+		return;
+	}
+#endif /* CONFIG_FB_MSM_MDSS_SPECIFIC_PANEL */
 	pdata->panel_info.panel_dead = true;
 	kobject_uevent_env(&mfd->fbi->dev->kobj,
 		KOBJ_CHANGE, envp);
