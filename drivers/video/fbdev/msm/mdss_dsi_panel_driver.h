@@ -140,7 +140,7 @@ struct incell_ctrl {
 #define FULL_INCELL   ((bool)false)
 
 #define CHANGE_FPS_MIN 22
-#define CHANGE_FPS_MAX 60
+#define CHANGE_FPS_MAX 120
 
 #define CHANGE_FPS_PORCH 2
 #define CHANGE_FPS_SEND 10
