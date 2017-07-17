@@ -498,12 +498,14 @@
 		somc,driver-ic-total-porch = <12>;
 		somc,change-fps-rtn-adj;
 		somc,change-fps-rtn-pos = <1 6>;
+		qcom,mdss-dsi-min-refresh-rate = <60>;
+		qcom,mdss-dsi-max-refresh-rate = <120>;
 
 		qcom,dynamic-mode-switch-enabled;
 		qcom,dynamic-mode-switch-type = "dynamic-resolution-switch-immediate";
 		qcom,dcs-cmd-by-left;
 		qcom,mdss-dsi-display-timings {
-			1080p {
+			1080p60 {
 				qcom,mdss-dsi-timing-default;
 				qcom,mdss-dsi-panel-width = <540>;
 				qcom,mdss-dsi-panel-height = <1920>;
@@ -552,6 +554,29 @@
 							];
 				qcom,mdss-dsi-timing-switch-command-state =
 					"dsi_lp_mode";
+
+				qcom,mdss-tear-check-sync-init-val = <3840>;
+				qcom,mdss-tear-check-start-pos = <3840>;
+				qcom,mdss-tear-check-rd-ptr-trigger-intr = <3841>;
+
+				qcom,config-select = <&dsi_dual_default_cmd_config0>;
+
+				qcom,mdss-dsi-panel-clockrate = <899000000>;
+			};
+
+			1080p120 {
+				qcom,mdss-dsi-panel-width = <540>;
+				qcom,mdss-dsi-panel-height = <1920>;
+				qcom,mdss-dsi-h-back-porch = <300>;
+				qcom,mdss-dsi-h-pulse-width = <40>;
+				qcom,mdss-dsi-h-front-porch = <400>;
+				qcom,mdss-dsi-v-back-porch = <10>;
+				qcom,mdss-dsi-v-pulse-width = <2>;
+				qcom,mdss-dsi-v-front-porch = <12>;
+				qcom,mdss-dsi-panel-framerate = <120>;
+				qcom,mdss-dsi-panel-timings = [00 1B 06 06 0B 11 05 07 05 03 04 00];
+				qcom,mdss-dsi-t-clk-post = <0x07>;
+				qcom,mdss-dsi-t-clk-pre = <0x29>;
 
 				qcom,mdss-tear-check-sync-init-val = <3840>;
 				qcom,mdss-tear-check-start-pos = <3840>;
@@ -680,6 +705,8 @@
 		somc,qpnp-lab-full-pull-down;
 		somc,qpnp-ibb-pull-down-enable;
 		somc,qpnp-ibb-full-pull-down;
+		qcom,mdss-dsi-min-refresh-rate = <60>;
+		qcom,mdss-dsi-max-refresh-rate = <120>;
 
 		somc,lk-on-skip;
 
@@ -687,7 +714,7 @@
 		qcom,dynamic-mode-switch-type = "dynamic-resolution-switch-immediate";
 		qcom,dcs-cmd-by-left;
 		qcom,mdss-dsi-display-timings {
-			1080p {
+			1080p60 {
 				qcom,mdss-dsi-timing-default;
 				qcom,mdss-dsi-panel-width = <540>;
 				qcom,mdss-dsi-panel-height = <1920>;
@@ -710,6 +737,30 @@
 
 				qcom,mdss-dsi-panel-clockrate = <899000000>;
 			};
+
+			1080p120 {
+				qcom,mdss-dsi-panel-width = <540>;
+				qcom,mdss-dsi-panel-height = <1920>;
+				qcom,mdss-dsi-h-back-porch = <300>;
+				qcom,mdss-dsi-h-pulse-width = <40>;
+				qcom,mdss-dsi-h-front-porch = <400>;
+				qcom,mdss-dsi-v-back-porch = <10>;
+				qcom,mdss-dsi-v-pulse-width = <2>;
+				qcom,mdss-dsi-v-front-porch = <12>;
+				qcom,mdss-dsi-panel-framerate = <120>;
+				qcom,mdss-dsi-panel-timings = [00 1B 06 06 0B 11 05 07 05 03 04 00];
+				qcom,mdss-dsi-t-clk-post = <0x07>;
+				qcom,mdss-dsi-t-clk-pre = <0x29>;
+
+				qcom,mdss-tear-check-sync-init-val = <3840>;
+				qcom,mdss-tear-check-start-pos = <3840>;
+				qcom,mdss-tear-check-rd-ptr-trigger-intr = <3841>;
+
+				qcom,config-select = <&dsi_dual_default_cmd_config0>;
+
+				qcom,mdss-dsi-panel-clockrate = <899000000>;
+			};
+
 
 			4k {
 				qcom,mdss-dsi-panel-width = <1080>;
