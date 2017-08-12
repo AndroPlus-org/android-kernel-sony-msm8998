@@ -477,7 +477,6 @@
 
 		somc,ewu-wait-after-touch-reset = <40>;
 		somc,lk-on-skip;
-		somc,reset-gpio-bad-design-quirk;
 
 		qcom,esd-check-enabled;
 		qcom,mdss-dsi-panel-status-command = [06 01 00 01 05 00 01 0A];
@@ -828,7 +827,6 @@
 
 		somc,ewu-wait-after-touch-reset = <40>;
 		somc,lk-on-skip;
-		somc,reset-gpio-bad-design-quirk;
 
 		qcom,esd-check-enabled;
 		qcom,mdss-dsi-panel-status-command = [06 01 00 01 05 00 01 0A];
