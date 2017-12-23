@@ -207,7 +207,7 @@ CONFIG_USB_GSPCA=m
 #### AndroPlus Kernel ####
 ##########################
 
-CONFIG_LOCALVERSION="-v07"
+CONFIG_LOCALVERSION="-v08"
 CONFIG_LOCALVERSION_AUTO=n
 
 # Disable unwanted things
