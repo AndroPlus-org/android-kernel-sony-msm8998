@@ -6,6 +6,9 @@ Configuration files can be found in arch/arm64/configs.
   diffconfigs for each product:
     Xperia XZ Premium G8141       => maple_diffconfig
     Xperia XZ Premium Dual G8142  => maple_dsds_diffconfig
+    Xperia XZ1 G8341              => poplar_diffconfig
+    Xperia XZ1 G8342              => poplar_dsds_diffconfig
+    Xperia XZ1 Compact G8441      => lilac_diffconfig
 
 
 How to build your kernel:

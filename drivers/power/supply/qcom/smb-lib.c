@@ -3246,6 +3246,9 @@ int smblib_set_prop_typec_power_role(struct smb_charger *chg,
 		power_role = 0;
 		break;
 	case POWER_SUPPLY_TYPEC_PR_SINK:
+#if defined(CONFIG_SOMC_CHARGER_EXTENSION)
+	case POWER_SUPPLY_TYPEC_PR_SINK_DELAY:
+#endif
 		power_role = UFP_EN_CMD_BIT;
 		break;
 	case POWER_SUPPLY_TYPEC_PR_SOURCE:
@@ -3272,12 +3275,12 @@ int smblib_set_prop_typec_power_role(struct smb_charger *chg,
 		}
 	}
 
-	if (val->intval == POWER_SUPPLY_TYPEC_PR_SINK ||
-			val->intval == POWER_SUPPLY_TYPEC_PR_SOURCE) {
-		smblib_err(chg, "power role set to SINK or SRC, sleep 120ms\n");
+#if defined(CONFIG_SOMC_CHARGER_EXTENSION)
+	if (val->intval == POWER_SUPPLY_TYPEC_PR_SINK_DELAY) {
+		smblib_dbg(chg, PR_SOMC, "power role set to SINK, delay 120ms\n");
 		msleep(120);
 	}
-
+#endif
 	rc = smblib_masked_write(chg, TYPE_C_INTRPT_ENB_SOFTWARE_CTRL_REG,
 				 TYPEC_POWER_ROLE_CMD_MASK, power_role);
 	if (rc < 0) {

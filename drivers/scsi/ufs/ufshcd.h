@@ -566,6 +566,7 @@ struct debugfs_files {
 	bool is_sys_suspended;
 	struct dentry *dump_dev_health_desc;
 	struct dentry *fw_revision;
+	struct dentry *serial;
 };
 
 /* tag stats statistics types */

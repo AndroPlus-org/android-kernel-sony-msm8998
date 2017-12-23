@@ -1739,6 +1739,11 @@ static void usbpd_sm(struct work_struct *w)
 			/* Set CC back to DRP toggle */
 			val.intval = POWER_SUPPLY_TYPEC_PR_DUAL;
 
+#if defined(CONFIG_SOMC_CHARGER_EXTENSION)
+		/* special prop with delay in case of SINK via syscall */
+		if (val.intval == POWER_SUPPLY_TYPEC_PR_SINK)
+			val.intval = POWER_SUPPLY_TYPEC_PR_SINK_DELAY;
+#endif
 		power_supply_set_property(pd->usb_psy,
 				POWER_SUPPLY_PROP_TYPEC_POWER_ROLE, &val);
 		pd->forced_pr = POWER_SUPPLY_TYPEC_PR_NONE;
