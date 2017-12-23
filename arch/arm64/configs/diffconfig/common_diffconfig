@@ -199,6 +199,8 @@ CONFIG_LOCALVERSION="-v07"
 CONFIG_LOCALVERSION_AUTO=n
 
 # Disable unwanted things
+# CONFIG_SECURITY_SONY_RIC is not set
+# CONFIG_DM_VERITY is not set
 # CONFIG_CORESIGHT is not set
 # CONFIG_SPI_SPIDEV is not set
 # CONFIG_MMC_TEST is not set
