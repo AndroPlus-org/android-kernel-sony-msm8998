@@ -1,0 +1,53 @@
+### GCC 4.9.x
+### I'm using this: https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/
+
+export ARCH=arm64
+export PATH=~/aarch64-linux-android-4.9-aosp/bin/:$PATH
+### See prefix of file names in the toolchain's bin directory
+export CROSS_COMPILE=aarch64-linux-android-
+
+if [ -e out/arch/arm64/boot ]; then
+	rm -rf out/arch/arm64/boot
+fi
+
+export KBUILD_DIFFCONFIG=maple_dcm_diffconfig
+make msmcortex-perf_defconfig O=./out
+make O=./out
+
+echo "checking for compiled kernel..."
+if [ -f out/arch/arm64/boot/Image.gz-dtb ]
+then
+
+	echo "DONE"
+
+	### G8188
+	../final_files/mkbootimg \
+	--kernel out/arch/arm64/boot/Image.gz-dtb \
+	--ramdisk ../final_files/ramdisk_maple_momo.cpio.gz \
+	--cmdline "androidboot.hardware=qcom user_debug=31 msm_rtb.filter=0x237 ehci-hcd.park=3 lpm_levels.sleep_disabled=1 sched_enable_hmp=1 sched_enable_power_aware=1 service_locator.enable=1 swiotlb=2048 androidboot.configfs=true androidboot.usbcontroller=a800000.dwc3 zram.backend=z3fold buildvariant=userdebug enforcing=0" \
+	--base 0x00000000 \
+        --kernel_offset 0x00008000 \
+        --ramdisk_offset 0x01000000 \
+        --tags_offset 0x00000100 \
+        --pagesize 4096 \
+	--output ../final_files/boot_G8188.img
+
+	### Version number
+	echo -n "Enter version number: "
+	read version
+
+	if [ -e ../final_files/boot_G8188.img ]
+	then
+
+		### Zip boot.img
+		cd ../final_files/
+		mv boot_G8188.img boot.img
+		zip XZP_AndroPlusKernel_v.zip boot.img
+		rm -f boot.img
+
+		### Copy zip to my desktop
+		dd if=XZP_AndroPlusKernel_v.zip of="/mnt/hgfs/VMShare/デスクトップ/XZP-G8188_AndroPlusKernel_v$version.zip"
+
+	fi
+
+fi
