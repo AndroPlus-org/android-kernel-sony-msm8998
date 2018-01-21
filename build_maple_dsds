@@ -46,7 +46,7 @@ then
 		rm -f boot.img
 
 		### Copy zip to my desktop
-		dd if=XZP_AndroPlusKernel_v.zip of="/mnt/hgfs/VMShare/デスクトップ/XZP_AndroPlusKernel_v$version.zip"
+		dd if=XZP_AndroPlusKernel_v.zip of="/mnt/hgfs/VMShare/Desktop/XZP_AndroPlusKernel_v$version.zip"
 
 	fi
 
