@@ -42,7 +42,7 @@ then
         --ramdisk_offset 0x01000000 \
         --tags_offset 0x00000100 \
         --pagesize 4096 \
-	--output ../final_files/boot_G8188.img
+	--output ../final_files/boot_G8188_DRMP.img
 
 	### Version number
 	echo -n "Enter version number: "
@@ -58,20 +58,20 @@ then
 		rm -f boot.img
 
 		### Copy zip to my desktop
-		dd if=XZP_AndroPlusKernel_v.zip of="/mnt/hgfs/VMShare/デスクトップ/XZP-G8188_AndroPlusKernel_v$version.zip"
+		dd if=XZP_AndroPlusKernel_v.zip of="/mnt/hgfs/VMShare/Desktop/XZP-G8188_AndroPlusKernel_v$version.zip"
 
 	fi
 
-	if [ -e boot_G8188.img ]
+	if [ -e boot_G8188_DRMP.img ]
 	then
 
 		### Zip boot.img
-		mv boot_G8188.img boot.img
+		mv boot_G8188_DRMP.img boot.img
 		zip XZP_AndroPlusKernel_v.zip boot.img
 		rm -f boot.img
 
 		### Copy zip to my desktop
-		dd if=XZP_AndroPlusKernel_v.zip of="/mnt/hgfs/VMShare/デスクトップ/XZP-G8188_AndroPlusKernel_v${version}_for_DRMPatch.zip"
+		dd if=XZP_AndroPlusKernel_v.zip of="/mnt/hgfs/VMShare/Desktop/XZP-G8188_AndroPlusKernel_v${version}_for_DRMPatch.zip"
 
 	fi	
 
