@@ -12,7 +12,7 @@ clear
 THREAD="-j$(grep -c ^processor /proc/cpuinfo)"
 KERNEL="Image"
 DTBIMAGE="dtb"
-export PATH=~/aarch64-linux-android-4.9-aosp/bin/:$PATH
+export PATH=~/bin/aarch64-linux-android-4.9/bin/:$PATH
 export CROSS_COMPILE=aarch64-linux-android-
 export KBUILD_DIFFCONFIG=maple_dcm_diffconfig
 DEFCONFIG="msmcortex-perf_defconfig"
@@ -24,7 +24,7 @@ ZIPNAME="XZP_AndroPlusKernel_${BASEVER}AK"
 
 # Paths
 KERNEL_DIR=`pwd`
-TOOLS_DIR=/mnt/ssd/home/android/kernel/bin
+TOOLS_DIR=${KERNEL_DIR}/../bin
 REPACK_DIR=${TOOLS_DIR}/AnyKernel2
 PATCH_DIR=${REPACK_DIR}/patch
 MODULES_DIR=${REPACK_DIR}/modules/system/lib/modules
